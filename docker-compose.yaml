@@ -1,0 +1,39 @@
+version: '3'
+
+services:
+  consul:
+    image: hashicorp/consul:latest
+    container_name: consul
+    ports:
+      - "8500:8500"  # Consul UI 端口
+    networks:
+      - consul_network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d
+      - ./templates:/templates
+    ports:
+      - "80:80"
+    networks:
+      - consul_network
+
+  consul-template:
+    image: hashicorp/consul-template:latest
+    container_name: consul-template
+    user: root
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d
+      - ./templates:/templates
+    command: >
+      consul-template 
+        -consul-addr=consul:8500
+        -template="/templates/vhost.conf.template:/etc/nginx/conf.d/vhost.conf"
+    networks:
+      - consul_network
+
+networks:
+  consul_network:
+    

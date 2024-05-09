@@ -1,0 +1,48 @@
+# Define the upstream server block from consul services
+
+  {{range services}}
+  {{if service .Name}}
+  {{- $serviceName := .Name}}
+  {{- with service $serviceName}}
+  upstream {{ $serviceName }} {
+    {{range .}}
+    server {{.Address}}:{{.Port}};
+    {{end}}
+  }
+  {{- end}}
+  {{- end}}    
+  {{end}}
+
+
+#Configure the server for website
+server {
+     listen 80;
+     server_name  192.168.0.98;    # replace your domain name 
+     root /etc/nginx/conf.d;       # set default web html folder
+
+#Configure the default location redirect file
+location / {
+     try_files $uri $uri/ index.html;   #set a default page for check
+  }
+
+
+#config location to proxy requests to the upstream for each service
+  {{range services}}
+  {{if service .Name}}
+  {{- $serviceName := .Name}}
+  {{- with service $serviceName}}
+  location /api/{{ $serviceName }} {
+    {{range .}}
+      rewrite ^/api/{{ $serviceName }}/(.*)$ /$1 break;
+      proxy_pass http://{{$serviceName}};
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;    
+    {{end}}
+  }
+  {{- end}}
+  {{- end}}    
+  {{end}}
+
+}
